@@ -6,10 +6,10 @@
 function mysearch_permission() {
   return array(
     'access mysearch' => array(
-        'title' => 'Access My Search',
-        'description' => 'Allows a user to access search results',
-      )
-    );
+      'title' => 'Access My Search',
+      'description' => 'Allows a user to access search results',
+    )
+  );
 }
 
 
@@ -36,19 +36,29 @@ function mysearch_menu() {
  */
 function mysearch_searchpage() {
   $searchterm = arg(1);
-  $query = "
-     SELECT nid
-     FROM node_revisions
-     WHERE body LIKE '%$searchterm%'
-     ";
-  $search_results = db_query($query); 
-  $search_results = "<h2>Search for $searchterm</h2><ul>";
-  foreach($get_node_result as $record)) {
-    $node = node_load($record->nid);
-    $search_results .= '<li><a href="/node/'
-     . $node->nid . '" title="' . $node->title . '">'
-     . $node->title . '</a><!-- debugging output: '
-     . print_r($node) . '  --><\li>';
+  if(empty($searchterm)){
+    return "Please try again using keyword.";
   }
-  return $search_results;
+  $keys = array($searchterm);
+  $query = db_select('search_index', 'i');
+  $query->join('node', 'n', 'n.nid = i.sid');
+  $query->fields('n',array('nid', 'title'))
+    ->condition('n.status', 1)
+    ->condition('i.word', $searchterm)
+    ->groupBy('n.nid')
+    ->orderBy('i.score', 'DESC')
+    ->addTag('node_access');
+  $find = $query->execute();
+  $items = array();
+  foreach ($find as $item) {
+    $items[] = array(
+      'data' => l($item->title, 'node/'.$item->nid),
+    );
+  }
+  if(empty($items)){
+    return "No results for keyword {$searchterm}";
+  }
+  $type = 'ul';
+  $themed_search_results = theme_item_list(array('items' => $items, 'title' => "Search results for {$searchterm}", 'type' => $type, 'attributes' => array()));
+  return $themed_search_results;
 }
