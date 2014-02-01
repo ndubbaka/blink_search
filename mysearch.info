@@ -1,0 +1,5 @@
+name = My Search
+description = Testing.
+core = 7.x
+dependencies[] = search
+
